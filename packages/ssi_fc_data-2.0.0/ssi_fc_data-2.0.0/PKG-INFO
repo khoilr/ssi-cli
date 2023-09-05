@@ -1,0 +1,23 @@
+Metadata-Version: 2.1
+Name: ssi_fc_data
+Version: 2.0.0
+Summary: UNKNOWN
+Home-page: UNKNOWN
+Author: SSI Dev
+Author-email: dev@ssi.com.vn
+License: UNKNOWN
+Description: Well, this contains nothing...
+
+        ...important...
+
+
+
+
+
+        ...yet.
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.*
+Description-Content-Type: text/markdown
