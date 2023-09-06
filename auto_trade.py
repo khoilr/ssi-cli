@@ -28,6 +28,25 @@ n_transactions = 5  # Số ngày để tính delta
 
 # Initialize global variables
 df = None
+df_trade = pd.DataFrame(
+    columns=[
+        "client",
+        "instrumentID",
+        "market",
+        "buySell",
+        "orderType",
+        "price",
+        "quantity",
+        "account",
+        "stopOrder",
+        "stopPrice",
+        "stopType",
+        "stopStep",
+        "lossStep",
+        "profitStep",
+        "Volume",
+    ]
+)
 count = 0
 client = FCTradingClient(
     config.url_trading,
@@ -39,7 +58,6 @@ client = FCTradingClient(
 
 
 def main():
-    # Create csv file with this colum
     # # Get and verify OTP for authentication
     # get_and_verify_otp()
 
@@ -74,7 +92,6 @@ def on_message(message):
     # Increment attempts counter and save data if needed
     count += 1
     if count == 10:
-        save_data_to_file()
         count = 0
 
 
@@ -132,28 +149,57 @@ def get_delta():
 
 def place_derivative_order(volume, position):
     # Place the derivative order
-    res = fc_der_new_order(
-        client=client,
-        instrumentID=stock,
-        market=market,
-        buySell=position,
-        orderType=order_type,
-        price=price,
-        quantity=volume,
-        account=account,
-        stopOrder=stop_order,
-        stopPrice=stop_price,
-        stopType=stop_type,
-        stopStep=stop_step,
-        lossStep=loss_step,
-        profitStep=profit_step,
+    # append to df_trade
+    df_trade.loc[len(df_trade)] = [
+        client,
+        stock,
+        market,
+        position,
+        order_type,
+        price,
+        volume,
+        account,
+        stop_order,
+        stop_price,
+        stop_type,
+        stop_step,
+        loss_step,
+        profit_step,
+        volume,
+    ]
+    df_trade.to_csv(
+        "data_trade.txt",
+        index=False,
+        sep=";",
+        index_label=False,
     )
-    if res.status == 200:
-        print("Đặt lệnh thành công")
-        print(res.message)
-    else:
-        print("Đặt lệnh thất bại")
-        print(res.message)
+
+    # res = fc_der_new_order(
+    #     client=client,
+    #     instrumentID=stock,
+    #     market=market,
+    #     buySell=position,
+    #     orderType=order_type,
+    #     price=price,
+    #     quantity=volume,
+    #     account=account,
+    #     stopOrder=stop_order,
+    #     stopPrice=stop_price,
+    #     stopType=stop_type,
+    #     stopStep=stop_step,
+    #     lossStep=loss_step,
+    #     profitStep=profit_step,
+    # )
+    # if res.status == 200:
+    #     print("Đặt lệnh thành công")
+    #     print(res.message)
+    #     data = json.loads(res.data["data"])
+    #     df_trade.loc[len(df_trade)] = data.values()
+    # else:
+    #     print("Đặt lệnh thất bại")
+    #     print(res.message)
+    #     data = json.loads(res.data["data"])
+    #     df_trade.loc[len(df_trade)] = data.values()
 
 
 def get_and_verify_otp():
