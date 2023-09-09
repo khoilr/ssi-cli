@@ -3,9 +3,11 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 import json
+from datetime import datetime
 
 import pandas as pd
 from ssi_fctrading import FCTradingClient
+from tabulate import tabulate
 
 from ssi import config
 from ssi.data.DataStream import MarketDataStream
@@ -23,30 +25,12 @@ stop_type = ""  # Nu stopOrder là True, thì stopType phải là mot trong (D: 
 stop_step = 0  # Nếu stopOrder là True, thì stopStep phải lớn hơn 0
 loss_step = 0  # Nếu stopOrder là True và stopType là B, thì lossStep phải lớn hơn 0
 profit_step = 0  # Nếu stopOrder là True và stopType là B, thì profitStep phải lớn hơn 0
-n_transactions = 5  # Số ngày để tính delta
+my_steps = 5  # Số ngày để tính delta
 # ========================= #
 
 # Initialize global variables
 df = None
-df_trade = pd.DataFrame(
-    columns=[
-        "client",
-        "instrumentID",
-        "market",
-        "buySell",
-        "orderType",
-        "price",
-        "quantity",
-        "account",
-        "stopOrder",
-        "stopPrice",
-        "stopType",
-        "stopStep",
-        "lossStep",
-        "profitStep",
-        "Volume",
-    ]
-)
+df_trade = pd.DataFrame(columns=["stock", "timestamp", "position", "price", "delta"])
 count = 0
 client = FCTradingClient(
     config.url_trading,
@@ -83,11 +67,10 @@ def on_message(message):
     delta = get_delta()
 
     # Place orders based on the calculated delta
-    if delta != 0:
-        if delta < 0:
-            place_derivative_order(-delta, "B")  # Place a buy order
-        else:
-            place_derivative_order(delta, "S")  # Place a sell order
+    if delta > 0.5:
+        place_derivative_order(-delta, content["LastPrice"], "B")  # Place a long order
+    else:
+        place_derivative_order(delta, content["LastPrice"], "S")  # Place a short order
 
     # Increment attempts counter and save data if needed
     count += 1
@@ -106,7 +89,11 @@ def append_to_df(content: dict):
     # Append content as a new row in the DataFrame
     df.loc[len(df)] = content.values()
 
-    print(df)
+    # Clear terminal before printing new data
+    print("\033[H\033[J")  # ANSI escape codes to clear terminal
+
+    # Print the updated table using tabulate
+    print(tabulate(df, headers="keys", tablefmt="fancy_grid"))
 
 
 # ========= Xử lý logic ======== #
@@ -137,9 +124,8 @@ def get_delta():
         Highest
         Lowest
     """
-    print(df.columns)
     try:
-        return df["LastVol"][-1] - df["LastVol"][-n_transactions]
+        return df["LastPrice"][-1] - df["LastPrice"][-my_steps]
     except (IndexError, KeyError):
         return 0
 
@@ -147,25 +133,15 @@ def get_delta():
 # ============================== #
 
 
-def place_derivative_order(volume, position):
+def place_derivative_order(delta, price, position):
     # Place the derivative order
     # append to df_trade
     df_trade.loc[len(df_trade)] = [
-        client,
         stock,
-        market,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         position,
-        order_type,
         price,
-        volume,
-        account,
-        stop_order,
-        stop_price,
-        stop_type,
-        stop_step,
-        loss_step,
-        profit_step,
-        volume,
+        delta,
     ]
     df_trade.to_csv(
         "data_trade.txt",
@@ -208,10 +184,6 @@ def get_and_verify_otp():
     otp = input("Nhập mã OTP: ")
     fc_verity_code(client, otp)
     return otp
-
-
-def save_data_to_file():
-    df.to_excel("data.xlsx", index=False)
 
 
 if __name__ == "__main__":

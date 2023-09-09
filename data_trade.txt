@@ -1,0 +1,2 @@
+stock;timestamp;position;price;delta
+VN30F2309;2023-09-06 08:41:01;S;1263.0;0
