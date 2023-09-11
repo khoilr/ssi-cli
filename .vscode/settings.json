@@ -1,3 +1,4 @@
 {
-    "cSpell.words": ["fcmodel", "fctrading", "VNFE"]
+    "cSpell.words": ["fcmodel", "fctrading", "VNFE"],
+    "python.formatting.provider": "black"
 }

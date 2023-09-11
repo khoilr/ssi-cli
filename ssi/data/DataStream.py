@@ -24,29 +24,35 @@ class MarketDataStream(SSI):
             "Authorization": f"{self.config.auth_type} {self.config.access_jwt}",
         }
 
+        self.connection = None  # Initialize the connection attribute
+
     def start(self, channel: str):
         with Session() as session:
             session.headers.update(self.headers)
 
-            connection = signalr.Connection(
+            self.connection = signalr.Connection(
                 # url=f"{self.config.stream_url}v2.0/signalr",
                 url=f"https://fc-data.ssi.com.vn/v2.0/signalr",
                 session=session,
             )
-            hub = connection.register_hub("FcMarketDataV2Hub")
+            hub = self.connection.register_hub("FcMarketDataV2Hub")
 
             hub.client.on("Broadcast", handler=self.on_message)
             hub.client.on("Error", handler=self.on_error)
 
-            connection.start()
+            self.connection.start()
             hub.server.invoke("SwitchChannels", channel)
 
             while True:
                 try:
-                    connection.wait()
+                    self.connection.wait()
                 except:
                     print("Connection lost: Try to reconnect to server!")
                     time.sleep(5)
+
+    def stop(self):
+        if self.connection:
+            self.connection.close()
 
 
 def on_message(message):

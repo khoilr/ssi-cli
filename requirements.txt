@@ -2,3 +2,4 @@ signalr-client
 ssi-fctrading
 pandas
 tabulate
+gevent
