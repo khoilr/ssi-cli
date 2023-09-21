@@ -80,7 +80,6 @@ class SSI(object):
             "Accept": "application/json",
             "Authorization": f"{self.config.auth_type} {self.config.access_jwt}",
         }
-
         return self.request(
             url=constants.ACCESS_TOKEN,
             method="post",

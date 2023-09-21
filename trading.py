@@ -15,10 +15,10 @@ from ssi import config
 from ssi.data.DataStream import MarketDataStream
 from ssi.trading import fc_der_new_order, fc_get_otp, fc_verity_code
 
-# Check current GMT, if not GMT+7, then change it to GMT+7
-if datetime.now().strftime("%z") != "+0700":
-    os.environ["TZ"] = "Asia/Ho_Chi_Minh"
-    time.tzset()
+# # Check current GMT, if not GMT+7, then change it to GMT+7
+# if datetime.now().strftime("%z") != "+0700":
+#     os.environ["TZ"] = "Asia/Ho_Chi_Minh"
+#     time.tzset()
 
 # ======== Biến số ======== #
 stock = "VN30F2309"  # Mã cổ phiếu (ví dụ: VN30F2309)
@@ -34,8 +34,9 @@ loss_step = 0  # Nếu stopOrder là True và stopType là B, thì lossStep ph�
 profit_step = 0  # Nếu stopOrder là True và stopType là B, thì profitStep phải lớn hơn 0
 file_name = "data_trade.txt"  # Tên file lưu dữ liệu giao dịch
 num_step_back = 5  # Số ngày để tính delta
+use_custom_period = False  # Sử dụng khoảng thời gian tùy chỉnh, nếu False thì sẽ chạy chương trình ngay lập tức, nếu True thì sẽ chạy chương trình từ from_datetime đến end_datetime
 from_datetime = "2023-09-11 00:00:00"  # Ngày giờ bắt đầu chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
-end_datetime = "2023-09-18 23:59:59"  # Ngày giờ kết thúc chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
+end_datetime = "2023-09-20 23:59:59"  # Ngày giờ kết thúc chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
 # ========================= #
 
 # Convert datetime string to datetime object
@@ -63,17 +64,22 @@ def main():
     global market_data_stream
 
     # Check Number of step back is greater than 1
-    assert num_step_back > 1, "Number of step back must be greater than 1, please check again"
+    assert (
+        num_step_back > 1
+    ), "Number of step back must be greater than 1, please check again"
 
-    # Check if end_datetime is greater than from_datetime
-    assert end_datetime > from_datetime, "End datetime must be greater than from datetime, please check again"
+    if use_custom_period:
+        # Check if end_datetime is greater than from_datetime
+        assert (
+            end_datetime > from_datetime
+        ), "End datetime must be greater than from datetime, please check again"
 
     # # Get and verify OTP for authentication
     # get_and_verify_otp()
 
     # Wait for the time to start
     notified = False
-    while datetime.now() < from_datetime:
+    while datetime.now() < from_datetime and use_custom_period:
         if not notified:
             print("Waiting for the time to start...")
             print("Current time:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -94,7 +100,7 @@ def on_message(message):
     global df_transactions
 
     # If the current time is greater than the end time, then stop the program
-    if datetime.now() > end_datetime:
+    if datetime.now() > end_datetime and use_custom_period:
         print("End time reached, stopping the program...")
         market_data_stream.stop()
         return
@@ -118,9 +124,13 @@ def on_message(message):
 
     # Place orders based on the calculated delta
     if delta >= 0.5:
-        place_derivative_order(delta, content["LastPrice"], "S")  # Place a short order (SELL)
+        place_derivative_order(
+            delta, content["LastPrice"], "S"
+        )  # Place a short order (SELL)
     elif delta <= -0.3:
-        place_derivative_order(delta, content["LastPrice"], "B")  # Place a long order (BUY)
+        place_derivative_order(
+            delta, content["LastPrice"], "B"
+        )  # Place a long order (BUY)
 
 
 def append_to_df(content: dict):
@@ -168,7 +178,9 @@ def get_delta():
     """
     try:
         last_price = df_transactions.loc[df_transactions.index[-1], "LastPrice"]
-        price_at_step_back = df_transactions.loc[df_transactions.index[-num_step_back], "LastPrice"]
+        price_at_step_back = df_transactions.loc[
+            df_transactions.index[-num_step_back], "LastPrice"
+        ]
         return Decimal(last_price - price_at_step_back).quantize(Decimal("0.1"))
     except (IndexError, KeyError):
         return None
