@@ -40,7 +40,7 @@ end_datetime = "2023-09-20 23:59:59"  # Ngày giờ kết thúc chạy chương 
 # ========================= #
 
 # Convert datetime string to datetime object
-if use_custom_period:
+if not use_custom_period:
     start_datetime = datetime.now()  # current time
     end_datetime = start_datetime + timedelta(minutes=15)  # current time + 15 minutes
 else:
