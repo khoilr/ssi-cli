@@ -5,7 +5,7 @@ gevent.monkey.patch_all()
 import json
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pandas as pd
@@ -34,14 +34,18 @@ loss_step = 0  # Nếu stopOrder là True và stopType là B, thì lossStep ph�
 profit_step = 0  # Nếu stopOrder là True và stopType là B, thì profitStep phải lớn hơn 0
 file_name = "data_trade.txt"  # Tên file lưu dữ liệu giao dịch
 num_step_back = 5  # Số ngày để tính delta
-use_custom_period = False  # Sử dụng khoảng thời gian tùy chỉnh, nếu False thì sẽ chạy chương trình ngay lập tức, nếu True thì sẽ chạy chương trình từ from_datetime đến end_datetime
-from_datetime = "2023-09-11 00:00:00"  # Ngày giờ bắt đầu chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
+use_custom_period = False  # True thì sử dụng khoảng thời gian tùy chỉnh, nếu False thì sẽ chạy chương trình ngay lập tức và chạy trong 15 phút
+start_datetime = "2023-09-11 00:00:00"  # Ngày giờ bắt đầu chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
 end_datetime = "2023-09-20 23:59:59"  # Ngày giờ kết thúc chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
 # ========================= #
 
 # Convert datetime string to datetime object
-from_datetime = datetime.strptime(from_datetime, "%Y-%m-%d %H:%M:%S")
-end_datetime = datetime.strptime(end_datetime, "%Y-%m-%d %H:%M:%S")
+if use_custom_period:
+    start_datetime = datetime.now()  # current time
+    end_datetime = start_datetime + timedelta(minutes=15)  # current time + 15 minutes
+else:
+    start_datetime = datetime.strptime(start_datetime, "%Y-%m-%d %H:%M:%S")
+    end_datetime = datetime.strptime(end_datetime, "%Y-%m-%d %H:%M:%S")
 
 # Initialize global variables
 df_transactions = None
@@ -68,22 +72,21 @@ def main():
         num_step_back > 1
     ), "Number of step back must be greater than 1, please check again"
 
-    if use_custom_period:
-        # Check if end_datetime is greater than from_datetime
-        assert (
-            end_datetime > from_datetime
-        ), "End datetime must be greater than from datetime, please check again"
+    # Check if end_datetime is greater than start_datetime
+    assert (
+        end_datetime > start_datetime
+    ), "End datetime must be greater than from datetime, please check again"
 
     # # Get and verify OTP for authentication
     # get_and_verify_otp()
 
     # Wait for the time to start
     notified = False
-    while datetime.now() < from_datetime and use_custom_period:
+    while datetime.now() < start_datetime:
         if not notified:
             print("Waiting for the time to start...")
             print("Current time:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            print("Start time:", from_datetime.strftime("%Y-%m-%d %H:%M:%S"))
+            print("Start time:", start_datetime.strftime("%Y-%m-%d %H:%M:%S"))
             notified = True
         pass
 
@@ -100,7 +103,7 @@ def on_message(message):
     global df_transactions
 
     # If the current time is greater than the end time, then stop the program
-    if datetime.now() > end_datetime and use_custom_period:
+    if datetime.now() > end_datetime:
         print("End time reached, stopping the program...")
         market_data_stream.stop()
         return
