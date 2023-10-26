@@ -4,7 +4,6 @@ gevent.monkey.patch_all()
 
 import json
 import os
-import time
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -21,7 +20,7 @@ from ssi.trading import fc_der_new_order, fc_get_otp, fc_verity_code
 #     time.tzset()
 
 # ======== Biến số ======== #
-stock = "VN30F2309"  # Mã cổ phiếu (ví dụ: VN30F2309)
+stock = "VN30F2311"  # Mã cổ phiếu (ví dụ: VN30F2309)
 market = "VNFE"  # Thị trường ('VN' hoặc 'VNFE')
 order_type = "MTL"  # Loại lệnh (LO, ATO, ATC, MTL, MOK, MAK)
 price = 0  # Giá. Với lệnh LO, giá phải lớn hơn 0; với các lệnh khác price = 0
@@ -68,14 +67,10 @@ def main():
     global market_data_stream
 
     # Check Number of step back is greater than 1
-    assert (
-        num_step_back > 1
-    ), "Number of step back must be greater than 1, please check again"
+    assert num_step_back > 1, "Number of step back must be greater than 1, please check again"
 
     # Check if end_datetime is greater than start_datetime
-    assert (
-        end_datetime > start_datetime
-    ), "End datetime must be greater than from datetime, please check again"
+    assert end_datetime > start_datetime, "End datetime must be greater than from datetime, please check again"
 
     # # Get and verify OTP for authentication
     # get_and_verify_otp()
@@ -88,20 +83,17 @@ def main():
             print("Current time:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             print("Start time:", start_datetime.strftime("%Y-%m-%d %H:%M:%S"))
             notified = True
-        pass
 
     # Start the market data stream processing
     print("Starting the market data stream...")
     market_data_stream = MarketDataStream(
         on_message=on_message,
-        on_error=lambda x: print(x),
+        on_error=print,
     )
     market_data_stream.start(f"X-TRADE:{stock}")
 
 
 def on_message(message):
-    global df_transactions
-
     # If the current time is greater than the end time, then stop the program
     if datetime.now() > end_datetime:
         print("End time reached, stopping the program...")
@@ -127,13 +119,9 @@ def on_message(message):
 
     # Place orders based on the calculated delta
     if delta >= 0.5:
-        place_derivative_order(
-            delta, content["LastPrice"], "S"
-        )  # Place a short order (SELL)
+        place_derivative_order(delta, content["LastPrice"], "S")  # Place a short order (SELL)
     elif delta <= -0.3:
-        place_derivative_order(
-            delta, content["LastPrice"], "B"
-        )  # Place a long order (BUY)
+        place_derivative_order(delta, content["LastPrice"], "B")  # Place a long order (BUY)
 
 
 def append_to_df(content: dict):
@@ -181,9 +169,7 @@ def get_delta():
     """
     try:
         last_price = df_transactions.loc[df_transactions.index[-1], "LastPrice"]
-        price_at_step_back = df_transactions.loc[
-            df_transactions.index[-num_step_back], "LastPrice"
-        ]
+        price_at_step_back = df_transactions.loc[df_transactions.index[-num_step_back], "LastPrice"]
         return Decimal(last_price - price_at_step_back).quantize(Decimal("0.1"))
     except (IndexError, KeyError):
         return None
@@ -192,11 +178,12 @@ def get_delta():
 # ============================== #
 
 
-def place_derivative_order(delta, price, position):
+def place_derivative_order(delta, _price, position):
     # Place the derivative order
     print("Placing derivative order...")
     print(
-        f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, Stock: {stock}, Position: {position}, Price: {price}, Delta: {delta}"
+        f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, \
+            Stock: {stock}, Position: {position}, Price: {_price}, Delta: {delta}"
     )
 
     # Append to df_trade
@@ -204,7 +191,7 @@ def place_derivative_order(delta, price, position):
         stock,
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         position,
-        price,
+        _price,
         delta,
     ]
 

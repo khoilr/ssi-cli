@@ -11,7 +11,7 @@ from tabulate import tabulate
 from ssi.data.DataStream import MarketDataStream
 
 # ======== Biến số ======== #
-stock = "VN30F2309"  # Mã cổ phiếu (ví dụ: VN30F2309)
+stock = "VN30F2311"  # Mã cổ phiếu (ví dụ: VN30F2309)
 # ========================= #
 
 # Initialize global variables
@@ -22,14 +22,12 @@ def main():
     # Start the market data stream processing
     market_data_stream = MarketDataStream(
         on_message=on_message,
-        on_error=lambda x: print(x),
+        on_error=print,
     )
     market_data_stream.start(f"X-TRADE:{stock}")
 
 
 def on_message(message):
-    global df_transactions, count
-
     # Parse incoming message and extract content
     message = json.loads(message)
     content = json.loads(message["Content"])

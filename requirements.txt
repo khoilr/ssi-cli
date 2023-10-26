@@ -3,3 +3,4 @@ ssi-fctrading
 pandas
 tabulate
 gevent
+python-dotenv

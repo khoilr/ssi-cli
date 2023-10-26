@@ -32,7 +32,7 @@ class MarketDataStream(SSI):
 
             self.connection = signalr.Connection(
                 # url=f"{self.config.stream_url}v2.0/signalr",
-                url=f"https://fc-data.ssi.com.vn/v2.0/signalr",
+                url="https://fc-data.ssi.com.vn/v2.0/signalr",
                 session=session,
             )
             hub = self.connection.register_hub("FcMarketDataV2Hub")
@@ -46,7 +46,7 @@ class MarketDataStream(SSI):
             while True:
                 try:
                     self.connection.wait()
-                except:
+                except Exception: # pylint: disable=broad-except
                     print("Connection lost: Try to reconnect to server!")
                     time.sleep(5)
 
@@ -65,6 +65,6 @@ if __name__ == "__main__":
     selected_channel = "X-TRADE:VN30F2309"
     market_data_stream = MarketDataStream(
         on_message=on_message,
-        on_error=lambda x: print(x),
+        on_error=print,
     )
     market_data_stream.start(selected_channel)
