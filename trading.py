@@ -37,13 +37,26 @@ PROFIT_STEP = 0  # Nếu stopOrder là True và stopType là B, thì profitStep 
 # ======== Biến số ======== #
 STOCK = "VN30F2311"  # Mã cổ phiếu (ví dụ: VN30F2309)
 FILE_NAME = "data_trade.txt"  # Tên file lưu dữ liệu giao dịch
-STEP_POINT_BACK = 2  # Số tickers để tính delta
-MORNING_DELTA_TICK_POINT = 0.4  # Delta tick point buổi sáng
-AFTERNOON_DELTA_TICK_POINT = 0.2  # Delta tick point buổi chiều
+
+# OPEN CONDITION
+OPEN_STEP_POINT_BACK = 3  # Số tickers để tính delta
+OPEN_MORNING_DELTA_TICK_POINT = 0.3  # Delta tick point buổi sáng
+OPEN_AFTERNOON_DELTA_TICK_POINT = 0.3  # Delta tick point buổi chiều
+
+# CLOSE CONDITION
+CLOSE_STEP_POINT_BACK = 3  # Số tickers để tính delta
+CLOSE_MORNING_DELTA_TICK_POINT = 0.5  # Delta tick point buổi sáng
+CLOSE_AFTERNOON_DELTA_TICK_POINT = 0.5  # Delta tick point buổi chiều
+
+# PERIOD
 USE_CUSTOM_PERIOD = False  # True thì sử dụng khoảng thời gian tùy chỉnh, nếu False thì sẽ chạy chương trình ngay lập tức và chạy trong 15 phút
 start_datetime = "2023-09-11 00:00:00"  # Ngày giờ bắt đầu chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
 end_datetime = "2023-09-20 23:59:59"  # Ngày giờ kết thúc chạy chương trình (định dạng: yyyy-mm-dd hh:mm:ss)
 # ========================= #
+
+is_open = False
+current_order_type = ""
+
 
 # Convert datetime string to datetime object
 if not USE_CUSTOM_PERIOD:
@@ -75,7 +88,8 @@ def main():
     global market_data_stream
 
     # Check Number of step back is greater than 1
-    assert STEP_POINT_BACK > 1, "Number of step back must be greater than 1, please check again"
+    assert OPEN_STEP_POINT_BACK > 1, "Number of step back must be greater than 1, please check again"
+    assert CLOSE_STEP_POINT_BACK > 1, "Number of step back must be greater than 1, please check again"
 
     # Check if end_datetime is greater than start_datetime
     assert end_datetime > start_datetime, "End datetime must be greater than from datetime, please check again"
@@ -132,7 +146,23 @@ def append_to_df(content: dict):
     df_transactions.loc[len(df_transactions)] = content.values()
 
     # Only keep the last num_step_back rows
-    df_transactions = df_transactions.tail(STEP_POINT_BACK)
+    df_transactions = df_transactions.tail(max(OPEN_STEP_POINT_BACK, CLOSE_STEP_POINT_BACK))
+
+
+def get_delta(is_open: bool) -> float:
+    # Giá hiện tại
+    last_price = df_transactions.loc[df_transactions.index[-1], "LastPrice"]
+
+    # Giá STEP_POINT_BACK tickers trước
+    if is_open:
+        price_at_step_back = df_transactions.loc[df_transactions.index[-CLOSE_STEP_POINT_BACK], "LastPrice"]
+    else:
+        price_at_step_back = df_transactions.loc[df_transactions.index[-OPEN_STEP_POINT_BACK], "LastPrice"]
+
+    # Độ chênh lệch giá hiện tại và giá STEP_POINT_BACK tickers trước
+    delta = Decimal(last_price - price_at_step_back).quantize(Decimal("0.1"))
+
+    return delta
 
 
 # ========= Xử lý logic ======== #
@@ -163,33 +193,52 @@ def delta_calculation():
         Highest
         Lowest
     """
+    global is_open, current_order_type
+
     try:
-        # Giá hiện tại
+        # Lấy giá hiện taọi
         last_price = df_transactions.loc[df_transactions.index[-1], "LastPrice"]
-        # Giá STEP_POINT_BACK tickers trước
-        price_at_step_back = df_transactions.loc[df_transactions.index[-STEP_POINT_BACK], "LastPrice"]
-        # Độ chênh lệch giá hiện tại và giá STEP_POINT_BACK tickers trước
-        delta = Decimal(last_price - price_at_step_back).quantize(Decimal("0.1"))
 
-        # Nếu là buổi sáng thì delta_tick_point = MORNING_DELTA_TICK_POINT, nếu là buổi chiều thì delta_tick_point = AFTERNOON_DELTA_TICK_POINT
+        # Tính delta
+        delta = get_delta(is_open)
+
+        print("Current delta: ", delta)
+
+        # Nếu là buổi sáng -> delta_tick_point = MORNING_DELTA_TICK_POINT
+        # Nếu là buổi chiều -> delta_tick_point = AFTERNOON_DELTA_TICK_POINT
         if datetime.now().hour < 12:
-            delta_tick_point = MORNING_DELTA_TICK_POINT
+            delta_tick_point = OPEN_MORNING_DELTA_TICK_POINT
+            delta_tick_point_close = CLOSE_MORNING_DELTA_TICK_POINT
         else:
-            delta_tick_point = AFTERNOON_DELTA_TICK_POINT
+            delta_tick_point = OPEN_AFTERNOON_DELTA_TICK_POINT
+            delta_tick_point_close = CLOSE_AFTERNOON_DELTA_TICK_POINT
 
-        # Nếu delta >= delta_tick_point thì đặt lệnh Short, ngược lại đặt lệnh Long
-        if delta >= delta_tick_point:
-            is_place_order = questionary.confirm(
-                f"Delta hiện tại ({delta}) lớn hơn {delta_tick_point}, dự báo uptrend. Bạn có muốn đặt lệnh long không?"
-            ).ask()
-            if is_place_order:
-                place_derivative_order(delta, last_price, "B")  # Đặt lệnh long (buy)
+        if is_open:
+            if current_order_type == "B" and delta >= delta_tick_point_close:
+                # Đóng lệnh Long (đặt lệnh Short)
+                place_derivative_order(delta, last_price, "S")
+                is_open = False
+            elif current_order_type == "S" and delta <= -delta_tick_point_close:
+                # Đóng lệnh Short (đặt lệnh Long)
+                place_derivative_order(delta, last_price, "B")
+                is_open = False
         else:
-            is_place_order = questionary.confirm(
-                f"Delta hiện tại ({delta}) nhỏ hơn {delta_tick_point}, dự báo downtrend. Bạn có muốn đặt lệnh short không?"
-            ).ask()
-            if is_place_order:
-                place_derivative_order(delta, last_price, "S")  # Đặt lệnh short (sell)
+            if delta >= delta_tick_point:
+                is_place_order = questionary.confirm(
+                    f"Delta hiện tại ({delta}) lớn hơn {delta_tick_point}, dự báo uptrend. Bạn có muốn đặt lệnh long không?"
+                ).ask()
+                if is_place_order:
+                    place_derivative_order(delta, last_price, "B")  # Đặt lệnh long (buy)
+                    current_order_type = "B"
+                    is_open = True
+            elif delta <= -delta_tick_point:
+                is_place_order = questionary.confirm(
+                    f"Delta hiện tại ({delta}) nhỏ hơn {-delta_tick_point}, dự báo downtrend. Bạn có muốn đặt lệnh short không?"
+                ).ask()
+                if is_place_order:
+                    place_derivative_order(delta, last_price, "S")  # Đặt lệnh short (sell)
+                    current_order_type = "S"
+                    is_open = True
 
     except (IndexError, KeyError):
         pass
