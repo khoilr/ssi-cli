@@ -149,7 +149,7 @@ def append_to_df(content: dict):
     df_transactions = df_transactions.tail(max(OPEN_STEP_POINT_BACK, CLOSE_STEP_POINT_BACK))
 
 
-def get_delta(is_open: bool) -> float:
+def get_delta():
     # Giá hiện tại
     last_price = df_transactions.loc[df_transactions.index[-1], "LastPrice"]
 
@@ -200,40 +200,40 @@ def delta_calculation():
         last_price = df_transactions.loc[df_transactions.index[-1], "LastPrice"]
 
         # Tính delta
-        delta = get_delta(is_open)
+        delta = get_delta()
 
         print("Current delta: ", delta)
 
         # Nếu là buổi sáng -> delta_tick_point = MORNING_DELTA_TICK_POINT
         # Nếu là buổi chiều -> delta_tick_point = AFTERNOON_DELTA_TICK_POINT
         if datetime.now().hour < 12:
-            delta_tick_point = OPEN_MORNING_DELTA_TICK_POINT
-            delta_tick_point_close = CLOSE_MORNING_DELTA_TICK_POINT
+            open_delta_tick_point = OPEN_MORNING_DELTA_TICK_POINT
+            close_delta_tick_point = CLOSE_MORNING_DELTA_TICK_POINT
         else:
-            delta_tick_point = OPEN_AFTERNOON_DELTA_TICK_POINT
-            delta_tick_point_close = CLOSE_AFTERNOON_DELTA_TICK_POINT
+            open_delta_tick_point = OPEN_AFTERNOON_DELTA_TICK_POINT
+            close_delta_tick_point = CLOSE_AFTERNOON_DELTA_TICK_POINT
 
         if is_open:
-            if current_order_type == "B" and delta >= delta_tick_point_close:
-                # Đóng lệnh Long (đặt lệnh Short)
+            if current_order_type == "B" and delta >= close_delta_tick_point:
+                # Đóng lệnh long (đặt lệnh short)
                 place_derivative_order(delta, last_price, "S")
                 is_open = False
-            elif current_order_type == "S" and delta <= -delta_tick_point_close:
-                # Đóng lệnh Short (đặt lệnh Long)
+            elif current_order_type == "S" and delta <= -close_delta_tick_point:
+                # Đóng lệnh short (đặt lệnh long)
                 place_derivative_order(delta, last_price, "B")
                 is_open = False
         else:
-            if delta >= delta_tick_point:
+            if delta >= open_delta_tick_point:
                 is_place_order = questionary.confirm(
-                    f"Delta hiện tại ({delta}) lớn hơn {delta_tick_point}, dự báo uptrend. Bạn có muốn đặt lệnh long không?"
+                    f"Delta hiện tại ({delta}) lớn hơn {open_delta_tick_point}, dự báo uptrend. Bạn có muốn đặt lệnh long không?"
                 ).ask()
                 if is_place_order:
                     place_derivative_order(delta, last_price, "B")  # Đặt lệnh long (buy)
                     current_order_type = "B"
                     is_open = True
-            elif delta <= -delta_tick_point:
+            elif delta <= -open_delta_tick_point:
                 is_place_order = questionary.confirm(
-                    f"Delta hiện tại ({delta}) nhỏ hơn {-delta_tick_point}, dự báo downtrend. Bạn có muốn đặt lệnh short không?"
+                    f"Delta hiện tại ({delta}) nhỏ hơn {-open_delta_tick_point}, dự báo downtrend. Bạn có muốn đặt lệnh short không?"
                 ).ask()
                 if is_place_order:
                     place_derivative_order(delta, last_price, "S")  # Đặt lệnh short (sell)
