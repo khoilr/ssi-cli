@@ -202,7 +202,7 @@ def delta_calculation():
         # Tính delta
         delta = get_delta()
 
-        print("Current delta: ", delta)
+        print(f"Current delta at {datetime.now()}: {delta}")
 
         # Nếu là buổi sáng -> delta_tick_point = MORNING_DELTA_TICK_POINT
         # Nếu là buổi chiều -> delta_tick_point = AFTERNOON_DELTA_TICK_POINT
@@ -224,18 +224,18 @@ def delta_calculation():
                 is_open = False
         else:
             if delta >= open_delta_tick_point:
-                is_place_order = questionary.confirm(
-                    f"Delta hiện tại ({delta}) lớn hơn {open_delta_tick_point}, dự báo uptrend. Bạn có muốn đặt lệnh long không?"
-                ).ask()
-                if is_place_order:
+                # is_place_order = questionary.confirm(
+                #     f"Delta hiện tại ({delta}) lớn hơn {open_delta_tick_point}, dự báo uptrend. Bạn có muốn đặt lệnh long không?"
+                # ).ask()
+                # if is_place_order:
                     place_derivative_order(delta, last_price, "B")  # Đặt lệnh long (buy)
                     current_order_type = "B"
                     is_open = True
             elif delta <= -open_delta_tick_point:
-                is_place_order = questionary.confirm(
-                    f"Delta hiện tại ({delta}) nhỏ hơn {-open_delta_tick_point}, dự báo downtrend. Bạn có muốn đặt lệnh short không?"
-                ).ask()
-                if is_place_order:
+                # is_place_order = questionary.confirm(
+                #     f"Delta hiện tại ({delta}) nhỏ hơn {-open_delta_tick_point}, dự báo downtrend. Bạn có muốn đặt lệnh short không?"
+                # ).ask()
+                # if is_place_order:
                     place_derivative_order(delta, last_price, "S")  # Đặt lệnh short (sell)
                     current_order_type = "S"
                     is_open = True
@@ -249,11 +249,13 @@ def delta_calculation():
 
 def place_derivative_order(delta, _price, position):
     # Place the derivative order
+    print("----------------------------------")
     print("Placing derivative order...")
     print(
-        f"Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, \
-            Stock: {STOCK}, Position: {position}, Price: {_price}, Delta: {delta}"
+        f"""Datetime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}, \
+Stock: {STOCK}, Position: {position}, Price: {_price}, Delta: {delta}"""
     )
+    print("----------------------------------")
 
     # Append to df_trade
     df_trades.loc[len(df_trades)] = [

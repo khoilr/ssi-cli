@@ -4,3 +4,4 @@ pandas
 tabulate
 gevent
 python-dotenv
+questionary
